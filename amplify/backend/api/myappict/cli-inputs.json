@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "serviceConfiguration": {
+    "apiName": "myappict",
+    "serviceName": "AppSync",
+    "defaultAuthType": {
+      "mode": "AMAZON_COGNITO_USER_POOLS",
+      "cognitoUserPoolId": "authmyappict22066c20"
+    },
+    "additionalAuthTypes": [
+      {
+        "mode": "API_KEY",
+        "expirationTime": 7,
+        "apiKeyExpirationDate": "2024-07-16T17:21:48.551Z",
+        "keyDescription": "secondTestApp"
+      }
+    ],
+    "conflictResolution": {
+      "defaultResolutionStrategy": {
+        "type": "OPTIMISTIC_CONCURRENCY"
+      },
+      "perModelResolutionStrategy": [
+        {
+          "resolutionStrategy": {
+            "type": "OPTIMISTIC_CONCURRENCY"
+          },
+          "entityName": "Todo"
+        }
+      ]
+    }
+  }
+}
