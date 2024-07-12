@@ -1,15 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { Todo } from "../models";
+import { useEffect, useState } from "react";
+import { LazyTodo, Todo } from "../models";
 import { Box, Stack, TextField, Button, Typography } from "@mui/material";
-import { DataStore } from "@aws-amplify/datastore";
-import { generateClient } from "aws-amplify/api";
-import { createTodo, deleteTodo } from "../graphql/mutations";
-import { listTodos } from "../graphql/queries";
-import { AuthUser, signOut } from "aws-amplify/auth";
+import { DataStore, Predicates } from "@aws-amplify/datastore";
+import { signOut } from "aws-amplify/auth";
 import { WithAuthenticatorProps } from "@aws-amplify/ui-react";
-import { onCreateTodo } from "../graphql/subscriptions";
-import { CONNECTION_STATE_CHANGE, ConnectionState } from "aws-amplify/api";
-import { Hub } from "aws-amplify/utils";
 
 type FormData = {
   name: string;
@@ -22,11 +16,7 @@ const Home = ({ user }: WithAuthenticatorProps) => {
     description: "",
   });
 
-  const [todoList, setTodoList] = useState<
-    { name: string; description: string; id: string; _version: number }[]
-  >([]);
-
-  const client = generateClient();
+  const [todoList, setTodoList] = useState<LazyTodo[]>([]);
 
   const initializeDataStore = async () => {
     try {
@@ -46,22 +36,14 @@ const Home = ({ user }: WithAuthenticatorProps) => {
           })
         );
 
-        const input = {
-          name: formData.name,
-          description: formData.description,
-        };
-
         setFormData({
           name: "",
           description: "",
         });
 
-        await client
-          .graphql({ query: createTodo, variables: { input } })
-          .then(() => {
-            console.log("running this part");
-            fetchData();
-          });
+        const todos = await DataStore.query(Todo);
+
+        setTodoList(todos);
       }
     } catch (error) {
       console.log("🚀 ~ createDetails ~ error:", error);
@@ -70,27 +52,21 @@ const Home = ({ user }: WithAuthenticatorProps) => {
 
   const fetchData = async () => {
     try {
-      const apiData = await client.graphql({
-        query: listTodos,
-        variables: { filter: { _deleted: { ne: true } } },
-      });
+      const todos = await DataStore.query(Todo);
 
-      const dataFromApi = apiData.data.listTodos.items;
-
-      const filteredArray = dataFromApi.filter((item) => item !== null);
-
-      setTodoList(filteredArray);
+      setTodoList(todos);
     } catch (error) {
       console.log("🚀 ~ fetchData ~ error:", error);
     }
   };
 
-  const deleteTodos = async (id: string, version: number) => {
+  const deleteTodos = async (id: string) => {
     try {
-      await client.graphql({
-        query: deleteTodo,
-        variables: { input: { id, _version: version } },
-      });
+      const toDelete = await DataStore.query(Todo, id);
+
+      if (toDelete) {
+        await DataStore.delete(toDelete);
+      }
 
       fetchData();
     } catch (error) {
@@ -196,7 +172,7 @@ const Home = ({ user }: WithAuthenticatorProps) => {
                 <Button
                   variant="contained"
                   color="error"
-                  onClick={() => deleteTodos(todo.id, todo._version)}
+                  onClick={() => deleteTodos(todo.id)}
                 >
                   Delete
                 </Button>
